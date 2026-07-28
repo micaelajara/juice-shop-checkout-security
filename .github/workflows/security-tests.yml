@@ -35,7 +35,7 @@ jobs:
       - name: Wait for Juice Shop to be ready
         run: |
           for i in $(seq 1 30); do
-            curl -sf http://localhost:3000/rest/products >/dev/null && exit 0
+            curl -sf http://localhost:3000/api/Products >/dev/null && exit 0
             sleep 2
           done
           echo "Juice Shop did not become ready in time" >&2
