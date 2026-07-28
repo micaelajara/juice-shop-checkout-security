@@ -1,0 +1,53 @@
+name: Security Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    # Juice Shop runs as a disposable service container, local to this job —
+    # this is testing a target we own for the duration of the run, not a
+    # shared public site. That's what makes it safe to fully automate,
+    # unlike load-testing a real third party's infrastructure.
+    services:
+      juiceshop:
+        image: bkimminich/juice-shop
+        ports:
+          - 3000:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for Juice Shop to be ready
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/rest/products >/dev/null && exit 0
+            sleep 2
+          done
+          echo "Juice Shop did not become ready in time" >&2
+          exit 1
+
+      - name: Run security test suite
+        run: npx playwright test
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
